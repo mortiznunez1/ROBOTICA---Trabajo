@@ -1,9 +1,9 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
+  **************************
   * @file           : main.c
   * @brief          : Main program body
-  ******************************************************************************
+  **************************
   * @attention
   *
   * Copyright (c) 2025 STMicroelectronics.
@@ -13,16 +13,16 @@
   * in the root directory of this software component.
   * If no LICENSE file comes with this software, it is provided AS-IS.
   *
-  ******************************************************************************
+  **************************
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include <string.h>
-
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <string.h>
+#include <stdio.h>
 
 /* USER CODE END Includes */
 
@@ -33,7 +33,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define BUFFERSIZE 15
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -58,17 +58,43 @@ static void MX_USART6_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-/*
-void CDC_ReceiveCallBack(uint8_t *buf, uint32_t len){
-	CDC_Transmit_FS(buf, len);
-	HAL_UART_Transmit(&huart6, buf, len, HAL_MAX_DELAY);
-}*/
 
-char readBuf[6];
+char readBuf[BUFFERSIZE];  // Buffer para recibir la cadena completa
+volatile uint8_t flag = 0; // Indica cuándo se ha recibido una cadena completa
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle) {
- /* Se recibe el caracter y se pide el siguiente*/
-// CDC_Transmit_FS(readBuf, 6);
- HAL_UART_Receive_IT(&huart6, (uint8_t*)readBuf, 6);
+
+	static uint8_t index = 0; // Posición en el buffer
+	char readChar;            // Caracter recibido
+
+	if (UartHandle->Instance == USART6) {
+		HAL_UART_Receive_IT(&huart6, (uint8_t *)&readChar, 1); // Recibir próximo carácter
+
+		if (readChar == '%') { // Indicador de fin de mensaje
+			readBuf[index] = '\0'; // Terminar el string
+			flag = 1;              // Indicar que el mensaje está listo
+			index = 0;             // Reiniciar el índice
+		} else if (index < BUFFERSIZE - 1) {
+			readBuf[index++] = readChar; // Guardar carácter en el buffer
+		}
+	}
+
+}
+
+
+void BluetoothManager()
+{
+	if (flag) { // Si hay un mensaje recibido
+			  if (strcmp(readBuf, "Alante") == 0) {
+				  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
+			  } else if (strcmp(readBuf, "Derecha") == 0) {
+				  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
+			  }
+
+			  memset(readBuf, 0, sizeof(readBuf)); // Resetear el buffer una vez gestionada la flag
+			  flag = 0; // Resetear la bandera para recibir nuevos datos
+	         }
+
 }
 /* USER CODE END 0 */
 
@@ -108,18 +134,25 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  HAL_UART_Receive_IT(&huart6, (uint8_t*)readBuf, 6);
+
+  HAL_UART_Receive_IT(&huart6, (uint8_t *)readBuf, 1); // Iniciar recepción
+
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-		if (strcmp(readBuf,"Alante")==0){
-	  		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
-	  	}
-	  	if (strcmp(readBuf,"Derecha")==0){
-	  	  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
-	  	}
+	  if (flag) { // Si hay un mensaje recibido
+		  if (strcmp(readBuf, "Alante") == 0) {
+			  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
+		  } else if (strcmp(readBuf, "Derecha") == 0) {
+			  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
+		  }
+		  memset(readBuf, 0, sizeof(readBuf)); // Resetear el buffer una vez gestionada la flag
+		  flag = 0; // Resetear la bandera para recibir nuevos datos
+	          }
+//	  BluetoothManager();
+
   }
   /* USER CODE END 3 */
 }
@@ -186,7 +219,7 @@ static void MX_USART6_UART_Init(void)
 
   /* USER CODE END USART6_Init 1 */
   huart6.Instance = USART6;
-  huart6.Init.BaudRate = 115200;
+  huart6.Init.BaudRate = 9600;
   huart6.Init.WordLength = UART_WORDLENGTH_8B;
   huart6.Init.StopBits = UART_STOPBITS_1;
   huart6.Init.Parity = UART_PARITY_NONE;

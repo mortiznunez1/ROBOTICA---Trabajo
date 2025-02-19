@@ -1,0 +1,211 @@
+16:46:44 **** Incremental Build of configuration Debug for project BrazoExcavador ****
+make -j4 all 
+arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m4 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F407xx -c -I../Core/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "Core/Src/main.o"
+arm-none-eabi-gcc -o "BrazoExcavador.elf" @"objects.list"   -mcpu=cortex-m4 -T"C:\Users\Julio\Documents\GitHub\ROBOTICA - Trabajo\BrazoExcavador\STM32F407VGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="BrazoExcavador.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Finished building target: BrazoExcavador.elf
+ 
+arm-none-eabi-size  BrazoExcavador.elf 
+arm-none-eabi-objdump -h -S BrazoExcavador.elf  > "BrazoExcavador.list"
+   text	   data	    bss	    dec	    hex	filename
+  10700	     12	   1660	  12372	   3054	BrazoExcavador.elf
+Finished building: default.size.stdout
+ 
+Finished building: BrazoExcavador.list
+ 
+16:48:11 **** Incremental Build of configuration Debug for project BrazoExcavador ****
+make -j4 all 
+arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m4 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F407xx -c -I../Core/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "Core/Src/main.o"
+arm-none-eabi-gcc -o "BrazoExcavador.elf" @"objects.list"   -mcpu=cortex-m4 -T"C:\Users\Julio\Documents\GitHub\ROBOTICA - Trabajo\BrazoExcavador\STM32F407VGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="BrazoExcavador.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Finished building target: BrazoExcavador.elf
+ 
+arm-none-eabi-size  BrazoExcavador.elf 
+arm-none-eabi-objdump -h -S BrazoExcavador.elf  > "BrazoExcavador.list"
+   text	   data	    bss	    dec	    hex	filename
+  10700	     12	   1660	  12372	   3054	BrazoExcavador.elf
+Finished building: default.size.stdout
+ 
+Finished building: BrazoExcavador.list
+ 
+16:51:10 **** Incremental Build of configuration Debug for project BrazoExcavador ****
+make -j4 all 
+arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m4 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F407xx -c -I../Core/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "Core/Src/main.o"
+../Core/Src/main.c: In function 'main':
+../Core/Src/main.c:195:13: error: invalid storage class for function 'MX_USART6_UART_Init'
+  195 | static void MX_USART6_UART_Init(void)
+      |             ^~~~~~~~~~~~~~~~~~~
+../Core/Src/main.c:228:13: error: invalid storage class for function 'MX_GPIO_Init'
+  228 | static void MX_GPIO_Init(void)
+      |             ^~~~~~~~~~~~
+../Core/Src/main.c:281:1: error: expected declaration or statement at end of input
+  281 | }
+      | ^
+../Core/Src/main.c: At top level:
+../Core/Src/main.c:53:13: warning: 'MX_GPIO_Init' used but never defined
+   53 | static void MX_GPIO_Init(void);
+      |             ^~~~~~~~~~~~
+../Core/Src/main.c:54:13: warning: 'MX_USART6_UART_Init' used but never defined
+   54 | static void MX_USART6_UART_Init(void);
+      |             ^~~~~~~~~~~~~~~~~~~
+../Core/Src/main.c:272:6: warning: 'Error_Handler' defined but not used [-Wunused-function]
+  272 | void Error_Handler(void)
+      |      ^~~~~~~~~~~~~
+../Core/Src/main.c:253:6: warning: 'BluetoothManager' defined but not used [-Wunused-function]
+  253 | void BluetoothManager()
+      |      ^~~~~~~~~~~~~~~~
+../Core/Src/main.c:228:13: warning: 'MX_GPIO_Init' defined but not used [-Wunused-function]
+  228 | static void MX_GPIO_Init(void)
+      |             ^~~~~~~~~~~~
+../Core/Src/main.c:195:13: warning: 'MX_USART6_UART_Init' defined but not used [-Wunused-function]
+  195 | static void MX_USART6_UART_Init(void)
+      |             ^~~~~~~~~~~~~~~~~~~
+../Core/Src/main.c:148:6: warning: 'SystemClock_Config' defined but not used [-Wunused-function]
+  148 | void SystemClock_Config(void)
+      |      ^~~~~~~~~~~~~~~~~~
+make: *** [Core/Src/subdir.mk:34: Core/Src/main.o] Error 1
+"make -j4 all" terminated with exit code 2. Build might be incomplete.
+16:51:49 **** Incremental Build of configuration Debug for project BrazoExcavador ****
+make -j4 all 
+arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m4 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F407xx -c -I../Core/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "Core/Src/main.o"
+arm-none-eabi-gcc -o "BrazoExcavador.elf" @"objects.list"   -mcpu=cortex-m4 -T"C:\Users\Julio\Documents\GitHub\ROBOTICA - Trabajo\BrazoExcavador\STM32F407VGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="BrazoExcavador.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Finished building target: BrazoExcavador.elf
+ 
+arm-none-eabi-size  BrazoExcavador.elf 
+arm-none-eabi-objdump -h -S BrazoExcavador.elf  > "BrazoExcavador.list"
+   text	   data	    bss	    dec	    hex	filename
+  10688	     12	   1660	  12360	   3048	BrazoExcavador.elf
+Finished building: default.size.stdout
+ 
+Finished building: BrazoExcavador.list
+ 
+16:52:25 **** Incremental Build of configuration Debug for project BrazoExcavador ****
+make -j4 all 
+arm-none-eabi-size  BrazoExcavador.elf 
+   text	   data	    bss	    dec	    hex	filename
+  10688	     12	   1660	  12360	   3048	BrazoExcavador.elf
+Finished building: default.size.stdout
+ 
+16:53:38 **** Incremental Build of configuration Debug for project BrazoExcavador ****
+make -j4 all 
+arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m4 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F407xx -c -I../Core/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "Core/Src/main.o"
+arm-none-eabi-gcc -o "BrazoExcavador.elf" @"objects.list"   -mcpu=cortex-m4 -T"C:\Users\Julio\Documents\GitHub\ROBOTICA - Trabajo\BrazoExcavador\STM32F407VGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="BrazoExcavador.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Finished building target: BrazoExcavador.elf
+ 
+arm-none-eabi-size  BrazoExcavador.elf 
+arm-none-eabi-objdump -h -S BrazoExcavador.elf  > "BrazoExcavador.list"
+   text	   data	    bss	    dec	    hex	filename
+  10684	     12	   1660	  12356	   3044	BrazoExcavador.elf
+Finished building: default.size.stdout
+ 
+Finished building: BrazoExcavador.list
+ 
+16:55:19 **** Incremental Build of configuration Debug for project BrazoExcavador ****
+make -j4 all 
+arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m4 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F407xx -c -I../Core/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "Core/Src/main.o"
+arm-none-eabi-gcc -o "BrazoExcavador.elf" @"objects.list"   -mcpu=cortex-m4 -T"C:\Users\Julio\Documents\GitHub\ROBOTICA - Trabajo\BrazoExcavador\STM32F407VGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="BrazoExcavador.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Finished building target: BrazoExcavador.elf
+ 
+arm-none-eabi-size  BrazoExcavador.elf 
+arm-none-eabi-objdump -h -S BrazoExcavador.elf  > "BrazoExcavador.list"
+   text	   data	    bss	    dec	    hex	filename
+  10684	     12	   1660	  12356	   3044	BrazoExcavador.elf
+Finished building: default.size.stdout
+ 
+Finished building: BrazoExcavador.list
+ 
+16:55:54 **** Incremental Build of configuration Debug for project BrazoExcavador ****
+make -j4 all 
+arm-none-eabi-size  BrazoExcavador.elf 
+   text	   data	    bss	    dec	    hex	filename
+  10684	     12	   1660	  12356	   3044	BrazoExcavador.elf
+Finished building: default.size.stdout
+ 
+16:58:04 **** Incremental Build of configuration Debug for project BrazoExcavador ****
+make -j4 all 
+arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m4 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F407xx -c -I../Core/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "Core/Src/main.o"
+arm-none-eabi-gcc -o "BrazoExcavador.elf" @"objects.list"   -mcpu=cortex-m4 -T"C:\Users\Julio\Documents\GitHub\ROBOTICA - Trabajo\BrazoExcavador\STM32F407VGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="BrazoExcavador.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Finished building target: BrazoExcavador.elf
+ 
+arm-none-eabi-size  BrazoExcavador.elf 
+arm-none-eabi-objdump -h -S BrazoExcavador.elf  > "BrazoExcavador.list"
+   text	   data	    bss	    dec	    hex	filename
+  10700	     12	   1660	  12372	   3054	BrazoExcavador.elf
+Finished building: default.size.stdout
+ 
+Finished building: BrazoExcavador.list
+ 
+17:07:00 **** Incremental Build of configuration Debug for project BrazoExcavador ****
+make -j4 all 
+arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m4 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F407xx -c -I../Core/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "Core/Src/main.o"
+arm-none-eabi-gcc -o "BrazoExcavador.elf" @"objects.list"   -mcpu=cortex-m4 -T"C:\Users\Julio\Documents\GitHub\ROBOTICA - Trabajo\BrazoExcavador\STM32F407VGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="BrazoExcavador.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Finished building target: BrazoExcavador.elf
+ 
+arm-none-eabi-size  BrazoExcavador.elf 
+arm-none-eabi-objdump -h -S BrazoExcavador.elf  > "BrazoExcavador.list"
+   text	   data	    bss	    dec	    hex	filename
+  10684	     12	   1660	  12356	   3044	BrazoExcavador.elf
+Finished building: default.size.stdout
+ 
+Finished building: BrazoExcavador.list
+ 
+17:08:35 **** Incremental Build of configuration Debug for project BrazoExcavador ****
+make -j4 all 
+arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m4 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F407xx -c -I../Core/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "Core/Src/main.o"
+arm-none-eabi-gcc -o "BrazoExcavador.elf" @"objects.list"   -mcpu=cortex-m4 -T"C:\Users\Julio\Documents\GitHub\ROBOTICA - Trabajo\BrazoExcavador\STM32F407VGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="BrazoExcavador.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Finished building target: BrazoExcavador.elf
+ 
+arm-none-eabi-size  BrazoExcavador.elf 
+arm-none-eabi-objdump -h -S BrazoExcavador.elf  > "BrazoExcavador.list"
+   text	   data	    bss	    dec	    hex	filename
+  10780	     12	   1660	  12452	   30a4	BrazoExcavador.elf
+Finished building: default.size.stdout
+ 
+Finished building: BrazoExcavador.list
+ 
+17:10:59 **** Incremental Build of configuration Debug for project BrazoExcavador ****
+make -j4 all 
+arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m4 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F407xx -c -I../Core/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "Core/Src/main.o"
+../Core/Src/main.c: In function 'BluetoothManager':
+../Core/Src/main.c:88:38: warning: passing argument 1 of 'strcmp' discards 'volatile' qualifier from pointer target type [-Wdiscarded-qualifiers]
+   88 |                           if (strcmp(readBuf, "Alante") == 0) {
+      |                                      ^~~~~~~
+In file included from ../Core/Src/main.c:24:
+C:\ST\STM32CubeIDE_1.16.1\STM32CubeIDE\plugins\com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.12.3.rel1.win32_1.1.0.202410251130\tools\bin/../lib/gcc/arm-none-eabi/12.3.1/../../../../arm-none-eabi/include/string.h:36:18: note: expected 'const char *' but argument is of type 'volatile char *'
+   36 | int      strcmp (const char *, const char *);
+      |                  ^~~~~~~~~~~~
+../Core/Src/main.c:90:45: warning: passing argument 1 of 'strcmp' discards 'volatile' qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 |                           } else if (strcmp(readBuf, "Derecha") == 0) {
+      |                                             ^~~~~~~
+C:\ST\STM32CubeIDE_1.16.1\STM32CubeIDE\plugins\com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.12.3.rel1.win32_1.1.0.202410251130\tools\bin/../lib/gcc/arm-none-eabi/12.3.1/../../../../arm-none-eabi/include/string.h:36:18: note: expected 'const char *' but argument is of type 'volatile char *'
+   36 | int      strcmp (const char *, const char *);
+      |                  ^~~~~~~~~~~~
+../Core/Src/main.c:94:34: warning: passing argument 1 of 'memset' discards 'volatile' qualifier from pointer target type [-Wdiscarded-qualifiers]
+   94 |                           memset(readBuf, 0, sizeof(readBuf)); // Resetear el buffer una vez gestionada la flag
+      |                                  ^~~~~~~
+C:\ST\STM32CubeIDE_1.16.1\STM32CubeIDE\plugins\com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.12.3.rel1.win32_1.1.0.202410251130\tools\bin/../lib/gcc/arm-none-eabi/12.3.1/../../../../arm-none-eabi/include/string.h:33:18: note: expected 'void *' but argument is of type 'volatile char *'
+   33 | void *   memset (void *, int, size_t);
+      |                  ^~~~~~
+arm-none-eabi-gcc -o "BrazoExcavador.elf" @"objects.list"   -mcpu=cortex-m4 -T"C:\Users\Julio\Documents\GitHub\ROBOTICA - Trabajo\BrazoExcavador\STM32F407VGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="BrazoExcavador.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Finished building target: BrazoExcavador.elf
+ 
+arm-none-eabi-size  BrazoExcavador.elf 
+arm-none-eabi-objdump -h -S BrazoExcavador.elf  > "BrazoExcavador.list"
+   text	   data	    bss	    dec	    hex	filename
+  10780	     12	   1660	  12452	   30a4	BrazoExcavador.elf
+Finished building: default.size.stdout
+ 
+Finished building: BrazoExcavador.list
+ 
+17:12:33 **** Incremental Build of configuration Debug for project BrazoExcavador ****
+make -j4 all 
+arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m4 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F407xx -c -I../Core/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "Core/Src/main.o"
+arm-none-eabi-gcc -o "BrazoExcavador.elf" @"objects.list"   -mcpu=cortex-m4 -T"C:\Users\Julio\Documents\GitHub\ROBOTICA - Trabajo\BrazoExcavador\STM32F407VGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="BrazoExcavador.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Finished building target: BrazoExcavador.elf
+ 
+arm-none-eabi-size  BrazoExcavador.elf 
+arm-none-eabi-objdump -h -S BrazoExcavador.elf  > "BrazoExcavador.list"
+   text	   data	    bss	    dec	    hex	filename
+  10684	     12	   1660	  12356	   3044	BrazoExcavador.elf
+Finished building: default.size.stdout
+ 
+Finished building: BrazoExcavador.list
+ 
