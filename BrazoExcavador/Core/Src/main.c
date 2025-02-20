@@ -61,12 +61,13 @@ static void MX_USART6_UART_Init(void);
 
 char readBuf[BUFFERSIZE];  // Buffer para recibir la cadena completa
 volatile uint8_t flag = 0; // Indica cuándo se ha recibido una cadena completa
+         // Caracter recibido
+
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle) {
 
 	static uint8_t index = 0; // Posición en el buffer
-	char readChar;            // Caracter recibido
-
+	static char readChar;
 	if (UartHandle->Instance == USART6) {
 		HAL_UART_Receive_IT(&huart6, (uint8_t *)&readChar, 1); // Recibir próximo carácter
 
@@ -142,16 +143,8 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  if (flag) { // Si hay un mensaje recibido
-		  if (strcmp(readBuf, "Alante") == 0) {
-			  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
-		  } else if (strcmp(readBuf, "Derecha") == 0) {
-			  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
-		  }
-		  memset(readBuf, 0, sizeof(readBuf)); // Resetear el buffer una vez gestionada la flag
-		  flag = 0; // Resetear la bandera para recibir nuevos datos
-	          }
-//	  BluetoothManager();
+
+	  BluetoothManager();
 
   }
   /* USER CODE END 3 */
