@@ -131,7 +131,18 @@ void ParameterRegister (void){
 	lcd_enviar("Intensidad:",1,0);
 }
 
+void set_stepper(void){ //Para ajustar a 1/16 de paso
+	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_9, GPIO_PIN_SET);   // HIGH
+	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_8, GPIO_PIN_SET);   // HIGH
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_SET); // HIGH
+}
 
+void step_once(void) {
+    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_SET);   // STEP HIGH
+    HAL_Delay(1);                                          // 1 ms (ajustable)
+    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_RESET); // STEP LOW
+    HAL_Delay(1);                                          // Delay entre pasos
+}
 
 /* USER CODE END 0 */
 
@@ -183,7 +194,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  ParameterRegister();
+//	  ParameterRegister();
 
 //	  BluetoothManager();
 //	  SetSpeed(&htim2, 1000);
@@ -202,6 +213,15 @@ int main(void)
 //      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
 //
 //      HAL_Delay(2000);
+	  set_stepper();
+	  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_RESET); // Dirección: 0 ó 1
+	  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_10, GPIO_PIN_RESET); // ENABLE_N: LOW para activar
+
+	  for (int i = 0; i < 3200; i++) { // 3200 pasos = 1 vuelta (con 1/16 microstepping)
+
+	      step_once();
+	  }
+
   }
   /* USER CODE END 3 */
 }
@@ -504,13 +524,14 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3|GPIO_PIN_5, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2|MS3_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOE, GPIO_PIN_8, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOD, MS2_Pin|MS1_Pin|ENABLE_N_Pin|DIR_Pin
+                          |STEP_Pin|GPIO_PIN_15, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : PA3 PA5 */
   GPIO_InitStruct.Pin = GPIO_PIN_3|GPIO_PIN_5;
@@ -519,8 +540,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PB2 */
-  GPIO_InitStruct.Pin = GPIO_PIN_2;
+  /*Configure GPIO pins : PB2 MS3_Pin */
+  GPIO_InitStruct.Pin = GPIO_PIN_2|MS3_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -533,8 +554,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PD15 */
-  GPIO_InitStruct.Pin = GPIO_PIN_15;
+  /*Configure GPIO pins : MS2_Pin MS1_Pin ENABLE_N_Pin DIR_Pin
+                           STEP_Pin PD15 */
+  GPIO_InitStruct.Pin = MS2_Pin|MS1_Pin|ENABLE_N_Pin|DIR_Pin
+                          |STEP_Pin|GPIO_PIN_15;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
