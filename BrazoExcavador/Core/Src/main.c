@@ -49,6 +49,7 @@ I2C_HandleTypeDef hi2c1;
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim4;
 
 UART_HandleTypeDef huart6;
 
@@ -64,6 +65,7 @@ static void MX_TIM1_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_I2C1_Init(void);
+static void MX_TIM4_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -74,6 +76,11 @@ static void MX_I2C1_Init(void);
 char readBuf[BUFFERSIZE];  // Buffer para recibir la cadena completa
 volatile uint8_t flag = 0; // Indica cuándo se ha recibido una cadena completa
          // Caracter recibido
+//uint8_t step_index = 0;
+//uint8_t step_state = 0;
+volatile uint8_t step_pulse_state = 0; // 0 = inactivo, 1 = STEP HIGH esperando STEP LOW
+
+
 
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle) {
@@ -91,23 +98,26 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle) {
 			readBuf[index++] = readChar; // Guardar carácter en el buffer
 		}
 	}
+}
 
+void step_once_non_blocking(void) {
+    step_pulse_state = 1;
+    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_SET); // STEP HIGH
+
+    // Programamos evento de 1 ms después
+    __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_1,__HAL_TIM_GET_COUNTER(&htim4) + 1000); // 1000 ticks = 1ms si timer a 1MHz
+    HAL_TIM_OC_Start_IT(&htim4, TIM_CHANNEL_1);
 }
 
 
-void BluetoothManager()
-{
-	if (flag) { // Si hay un mensaje recibido
-			  if (strcmp(readBuf, "Alante") == 0) {
-				  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
-			  } else if (strcmp(readBuf, "Derecha") == 0) {
-				  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
-			  }
-
-			  memset(readBuf, 0, sizeof(readBuf)); // Resetear el buffer una vez gestionada la flag
-			  flag = 0; // Resetear la bandera para recibir nuevos datos
-	         }
-
+void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim) {
+    if (htim->Instance == TIM4 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1) {
+        if (step_pulse_state == 1) {
+            HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_RESET); // STEP LOW
+            step_pulse_state = 0;
+            HAL_TIM_OC_Stop_IT(&htim4, TIM_CHANNEL_1); // Paramos el timer hasta el siguiente paso
+        }
+    }
 }
 
 void SetPosition(TIM_HandleTypeDef *htim,uint16_t PulseWidth){
@@ -142,6 +152,31 @@ void step_once(void) {
     HAL_Delay(1);                                          // 1 ms (ajustable)
     HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_RESET); // STEP LOW
     HAL_Delay(1);                                          // Delay entre pasos
+}
+
+void move_stepper_degrees(float angle, uint8_t dir) {
+    int steps = (int)((angle / 360.0) * 3200 * 91.0/35.0);  // calcular pasos
+    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, dir); // Dirección: 0 = CW, 1 = CCW
+    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_10, GPIO_PIN_RESET); // ENABLE_N: LOW para habilitar
+
+    for (int i = 0; i < steps; i++) {
+        step_once();
+    }
+}
+void BluetoothManager()
+{
+	if (flag) { // Si hay un mensaje recibido
+			  if (strcmp(readBuf, "Alante") == 0) {
+				  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
+			  } else if (strcmp(readBuf, "Derecha") == 0) {
+				  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
+			  }
+			  else if (strcmp(readBuf, "60") == 0) {
+				  move_stepper_degrees(strtof(readBuf,NULL),1);
+			  			  }
+			  memset(readBuf, 0, sizeof(readBuf)); // Resetear el buffer una vez gestionada la flag
+			  flag = 0; // Resetear la bandera para recibir nuevos datos
+	         }
 }
 
 /* USER CODE END 0 */
@@ -180,8 +215,10 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM3_Init();
   MX_I2C1_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
   lcd_init();
+  HAL_TIM_OC_Start_IT(&htim2, TIM_CHANNEL_1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -203,6 +240,7 @@ int main(void)
 //	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
 //
 //	  HAL_Delay(2000);
+//	  SetSpeed(&htim2, 100);
 //
 //	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_RESET);
 //      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
@@ -213,14 +251,22 @@ int main(void)
 //      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
 //
 //      HAL_Delay(2000);
+
+
 	  set_stepper();
-	  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_RESET); // Dirección: 0 ó 1
-	  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_10, GPIO_PIN_RESET); // ENABLE_N: LOW para activar
 
-	  for (int i = 0; i < 3200; i++) { // 3200 pasos = 1 vuelta (con 1/16 microstepping)
+	  move_stepper_degrees(270,1);
+	  HAL_Delay(5000);
+	  move_stepper_degrees(180,0);
+	  HAL_Delay(5000);
 
-	      step_once();
-	  }
+//	  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_RESET); // Dirección: 0 ó 1
+//	  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_10, GPIO_PIN_RESET); // ENABLE_N: LOW para activar
+//
+//	  for (int i = 0; i < 3200; i++) { // 3200 pasos = 1 vuelta (con 1/16 microstepping)
+//
+//	      step_once();
+//	  }
 
   }
   /* USER CODE END 3 */
@@ -470,6 +516,55 @@ static void MX_TIM3_Init(void)
 }
 
 /**
+  * @brief TIM4 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM4_Init(void)
+{
+
+  /* USER CODE BEGIN TIM4_Init 0 */
+
+  /* USER CODE END TIM4_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM4_Init 1 */
+
+  /* USER CODE END TIM4_Init 1 */
+  htim4.Instance = TIM4;
+  htim4.Init.Prescaler = 12;
+  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim4.Init.Period = 65535;
+  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_OC_Init(&htim4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_TIMING;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_OC_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM4_Init 2 */
+
+  /* USER CODE END TIM4_Init 2 */
+  HAL_TIM_MspPostInit(&htim4);
+
+}
+
+/**
   * @brief USART6 Initialization Function
   * @param None
   * @retval None
@@ -510,8 +605,8 @@ static void MX_USART6_UART_Init(void)
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-/* USER CODE BEGIN MX_GPIO_Init_1 */
-/* USER CODE END MX_GPIO_Init_1 */
+  /* USER CODE BEGIN MX_GPIO_Init_1 */
+  /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOA_CLK_ENABLE();
@@ -563,8 +658,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
-/* USER CODE BEGIN MX_GPIO_Init_2 */
-/* USER CODE END MX_GPIO_Init_2 */
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
+  /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
