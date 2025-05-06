@@ -33,7 +33,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define BUFFERSIZE 15
+#define BUFFERSIZE 4
 #define ADCResolution 4096
 #define ServoRange 120
 /* USER CODE END PD */
@@ -79,8 +79,11 @@ volatile uint8_t flag = 0; // Indica cuándo se ha recibido una cadena completa
 //uint8_t step_index = 0;
 //uint8_t step_state = 0;
 volatile uint8_t step_pulse_state = 0; // 0 = inactivo, 1 = STEP HIGH esperando STEP LOW
-
-
+volatile float angle = 0;
+volatile float angle_buf = 0;
+volatile uint8_t angle_ready = 0;
+volatile uint8_t moving = 0;
+volatile float angle_difference = 0;
 
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle) {
@@ -163,19 +166,61 @@ void move_stepper_degrees(float angle, uint8_t dir) {
         step_once();
     }
 }
+
+int strtoint(char readBuf[]) {
+    int i = 0;
+    int angle = 0;
+
+    // Iteración hasta encontrar el final de la cadena
+    while (readBuf[i] != '\0' || readBuf[i] != '\000') {  // Finaliza al llegar a '\0' o '\000'
+
+		// Solo se procesan los caracteres numéricos
+			if (readBuf[i] >= '0' && readBuf[i] <= '9') {
+				angle = angle * 10 + (readBuf[i] - '0');
+			}
+
+        i++;  // Se avanza al siguiente carácter
+    }
+
+    return angle;
+}
+
+
 void BluetoothManager()
 {
+	float angle_aux = 0;
+
 	if (flag) { // Si hay un mensaje recibido
-			  if (strcmp(readBuf, "Alante") == 0) {
-				  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
-			  } else if (strcmp(readBuf, "Derecha") == 0) {
-				  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
-			  }
-			  else if (strcmp(readBuf, "60") == 0) {
-				  move_stepper_degrees(strtof(readBuf,NULL),1);
-			  			  }
-			  memset(readBuf, 0, sizeof(readBuf)); // Resetear el buffer una vez gestionada la flag
-			  flag = 0; // Resetear la bandera para recibir nuevos datos
+
+		flag = 0;
+
+		if(!moving)
+		{
+			if((angle_aux = strtoint(readBuf)) != angle){
+				angle_buf = angle;
+				angle = angle_aux;
+				angle_ready = 1;
+			}
+		}
+
+//		if(angle >= angle_buf)
+//		{
+//			move_stepper_degrees(angle, 1);
+//		}
+//		else
+//		{
+//			move_stepper_degrees(angle, 0);
+//		}
+//
+//			  if (strcmp(readBuf, "Alante") == 0) {
+//				  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
+//			  } else if (strcmp(readBuf, "Derecha") == 0) {
+//				  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
+//			  }
+//			  else if (strcmp(readBuf, "60") == 0) {
+//				  move_stepper_degrees(strtof(readBuf,NULL),1);
+//			  			  }
+//			  memset(readBuf, 0, sizeof(readBuf)); // Resetear el buffer una vez gestionada la flag
 	         }
 }
 
@@ -218,6 +263,7 @@ int main(void)
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
   lcd_init();
+  set_stepper();
   HAL_TIM_OC_Start_IT(&htim2, TIM_CHANNEL_1);
   /* USER CODE END 2 */
 
@@ -233,7 +279,21 @@ int main(void)
     /* USER CODE BEGIN 3 */
 //	  ParameterRegister();
 
-//	  BluetoothManager();
+	  BluetoothManager();
+	  if(angle_ready){
+
+		  angle_ready = 0;
+		  angle_difference = angle-angle_buf;
+
+		  if(angle >= angle_buf) {
+		  		move_stepper_degrees(angle_difference, 1);
+			}
+
+		else {
+				move_stepper_degrees(angle_buf-angle, 0);
+			}
+
+	  }
 //	  SetSpeed(&htim2, 1000);
 //
 //	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET);
@@ -253,12 +313,10 @@ int main(void)
 //      HAL_Delay(2000);
 
 
-	  set_stepper();
-
-	  move_stepper_degrees(270,1);
-	  HAL_Delay(5000);
-	  move_stepper_degrees(180,0);
-	  HAL_Delay(5000);
+//	  move_stepper_degrees(270,1);
+//	  HAL_Delay(5000);
+//	  move_stepper_degrees(180,0);
+//	  HAL_Delay(5000);
 
 //	  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_RESET); // Dirección: 0 ó 1
 //	  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_10, GPIO_PIN_RESET); // ENABLE_N: LOW para activar
