@@ -1,3 +1,3 @@
-../Core/Src/Cinematica.c:17:10:forward_kinematics	88	static
-../Core/Src/Cinematica.c:32:8:inverse_kinematics	112	static
-../Core/Src/Cinematica.c:52:10:differential_kinematics	160	static
+../Core/Src/Cinematica.c:19:10:forward_kinematics	104	static
+../Core/Src/Cinematica.c:35:8:inverse_kinematics	120	static
+../Core/Src/Cinematica.c:63:10:differential_kinematics	176	static
