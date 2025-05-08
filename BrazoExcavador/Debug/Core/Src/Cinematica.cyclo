@@ -1,0 +1,3 @@
+../Core/Src/Cinematica.c:17:10:forward_kinematics	1
+../Core/Src/Cinematica.c:32:8:inverse_kinematics	1
+../Core/Src/Cinematica.c:52:10:differential_kinematics	1
