@@ -36,6 +36,7 @@
 #define BUFFERSIZE 4
 #define ADCResolution 4096
 #define ServoRange 120
+#define PWM_MAX __HAL_TIM_GET_AUTORELOAD(&htim1)
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -44,6 +45,8 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+ADC_HandleTypeDef hadc1;
+
 I2C_HandleTypeDef hi2c1;
 
 TIM_HandleTypeDef htim1;
@@ -66,12 +69,41 @@ static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_TIM4_Init(void);
+static void MX_ADC1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+
+
+volatile int32_t lectura1_adc;
+volatile int32_t lectura1_grados;
+volatile int32_t lectura1_volt;
+volatile int32_t lectura2_adc;
+volatile int32_t lectura2_grados;
+volatile int32_t lectura2_volt;
+
+volatile float error1;
+volatile float error_previo1;
+volatile float derivada1;
+volatile float salida1;
+volatile float error2;
+volatile float error_previo2;
+volatile float derivada2;
+volatile float salida2;
+
+volatile float dt=0.01;
+
+volatile float Posicion_deseada_motor_1;
+volatile float Posicion_deseada_motor_2;
+
+volatile float Kp1=1;
+volatile float Kd1=0;
+volatile float Kp2=1;
+volatile float Kd2=0;
 
 char readBuf[BUFFERSIZE];  // Buffer para recibir la cadena completa
 volatile uint8_t flag = 0; // Indica cuándo se ha recibido una cadena completa
@@ -224,6 +256,81 @@ void BluetoothManager()
 	         }
 }
 
+void ReadADC(ADC_HandleTypeDef *hadc, volatile uint32_t *variable){
+
+	HAL_ADC_START(&hadc1);
+	HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+	*variable=HAL_ADC_GetValue(&hadc1);
+	HAL_ADC_Stop(&hadc1);
+}
+
+void Change_VoltGrados(uint32_t *adc_val){
+	lectura1_grados = (240.0f *(*adc_val))/4095.0f;
+}
+
+void Change_GradosVolt(uint32_t *Posicion){
+	lectura1_volt=(3.3f *(*Posicion))/240.0f;
+}
+
+void Change_DigVolt(volatile uint32_t *adc_val, volatile uint32_t *lectura){
+	*lectura=(3.3f*(float)(*adc_val))/4095.0f;
+}
+
+void ControlPD(volatile float setpoint,volatile float medida, volatile float *error,
+		volatile float *derivada,volatile float *salida, volatile float *error_previo,uint8_t Motor){
+
+	*error=setpoint-medida;
+	*derivada=(*error- *error_previo)/dt;
+
+	if (Motor==1){
+
+		*salida =Kp1 * *error + Kd1 * *derivada;
+
+		if (*salida > 0){
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(GPIOA,GPIO_PIN_9,GPIO_PIN_RESET);
+		} else {
+			HAL_GPIIO_WritePin(GPIOA,GPIO_PIN_8,GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOA,GPIO_PIN_9,GPIO_PIN_SET);
+			*salida= -*salida;  //Hacer PWM positivo
+			if(*salida >1.0f) *salida=1.0f;
+			__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, *salida *PWM_MAX);
+		}}
+
+	if (Motor==2){
+
+			*salida =Kp2 * *error + Kd2 * *derivada;
+
+			if (*salida > 0){
+				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
+				HAL_GPIO_WritePin(GPIOA,GPIO_PIN_9,GPIO_PIN_RESET);
+			} else {
+				HAL_GPIIO_WritePin(GPIOA,GPIO_PIN_8,GPIO_PIN_RESET);
+				HAL_GPIO_WritePin(GPIOA,GPIO_PIN_9,GPIO_PIN_SET);
+				*salida= -*salida;  //Hacer PWM positivo
+				if(*salida >1.0f) *salida=1.0f;
+				__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, *salida *PWM_MAX);
+			}}
+	*error_previo= *error;
+
+	}
+
+
+void FeedBackMotor(){
+
+	ReadADC(&hadc1,&lectura1_adc);
+	ReadADC(&hadc1,&lectura2_adc);
+
+	Change_DigVolt(&lectura1_adc, &lectura1_volt);
+	Change_DigVolt(&lectura2_adc, &lectura2_volt);
+
+	Control_PD(Posicion_deseada_motor_1,lectura1_volt,&error1,&derivada1,&salida1,&error_previo1,1);
+	Control_PD(Posicion_deseada_motor_2,lectura2_volt,&error2,&derivada2,&salida2,&error_previo2,2);
+}
+
+
+
+
 /* USER CODE END 0 */
 
 /**
@@ -261,10 +368,12 @@ int main(void)
   MX_TIM3_Init();
   MX_I2C1_Init();
   MX_TIM4_Init();
+  MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   lcd_init();
   set_stepper();
   HAL_TIM_OC_Start_IT(&htim2, TIM_CHANNEL_1);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -294,6 +403,11 @@ int main(void)
 			}
 
 	  }
+
+
+
+
+
 //	  SetSpeed(&htim2, 1000);
 //
 //	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET);
@@ -374,6 +488,58 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief ADC1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_ADC1_Init(void)
+{
+
+  /* USER CODE BEGIN ADC1_Init 0 */
+
+  /* USER CODE END ADC1_Init 0 */
+
+  ADC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN ADC1_Init 1 */
+
+  /* USER CODE END ADC1_Init 1 */
+
+  /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
+  */
+  hadc1.Instance = ADC1;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
+  hadc1.Init.Resolution = ADC_RESOLUTION_12B;
+  hadc1.Init.ScanConvMode = DISABLE;
+  hadc1.Init.ContinuousConvMode = ENABLE;
+  hadc1.Init.DiscontinuousConvMode = DISABLE;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc1.Init.NbrOfConversion = 1;
+  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  if (HAL_ADC_Init(&hadc1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
+  */
+  sConfig.Channel = ADC_CHANNEL_10;
+  sConfig.Rank = 1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN ADC1_Init 2 */
+
+  /* USER CODE END ADC1_Init 2 */
+
 }
 
 /**
@@ -667,11 +833,11 @@ static void MX_GPIO_Init(void)
   /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
-  __HAL_RCC_GPIOC_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3|GPIO_PIN_5, GPIO_PIN_RESET);
