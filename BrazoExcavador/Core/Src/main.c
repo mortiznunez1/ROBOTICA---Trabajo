@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "Cinematica.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -57,7 +58,8 @@ TIM_HandleTypeDef htim4;
 UART_HandleTypeDef huart6;
 
 /* USER CODE BEGIN PV */
-
+Position p = {15.0f, 0.0f, 12.0f};
+float orientacion = 45.0f;                 // Ejemplo
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -99,6 +101,7 @@ volatile float dt=0.01;
 
 volatile float Posicion_deseada_motor_1;
 volatile float Posicion_deseada_motor_2;
+
 
 volatile float Kp1=1;
 volatile float Kd1=0;
@@ -258,7 +261,7 @@ void BluetoothManager()
 
 void ReadADC(ADC_HandleTypeDef *hadc, volatile uint32_t *variable){
 
-	HAL_ADC_START(&hadc1);
+	HAL_ADC_Start(&hadc1);
 	HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
 	*variable=HAL_ADC_GetValue(&hadc1);
 	HAL_ADC_Stop(&hadc1);
@@ -272,7 +275,7 @@ void Change_GradosVolt(uint32_t *Posicion){
 	lectura1_volt=(3.3f *(*Posicion))/240.0f;
 }
 
-void Change_DigVolt(volatile uint32_t *adc_val, volatile uint32_t *lectura){
+void Change_DigVolt(volatile uint32_t *adc_val, volatile  uint32_t *lectura){
 	*lectura=(3.3f*(float)(*adc_val))/4095.0f;
 }
 
@@ -290,7 +293,7 @@ void ControlPD(volatile float setpoint,volatile float medida, volatile float *er
 			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
 			HAL_GPIO_WritePin(GPIOA,GPIO_PIN_9,GPIO_PIN_RESET);
 		} else {
-			HAL_GPIIO_WritePin(GPIOA,GPIO_PIN_8,GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOA,GPIO_PIN_8,GPIO_PIN_RESET);
 			HAL_GPIO_WritePin(GPIOA,GPIO_PIN_9,GPIO_PIN_SET);
 			*salida= -*salida;  //Hacer PWM positivo
 			if(*salida >1.0f) *salida=1.0f;
@@ -305,7 +308,7 @@ void ControlPD(volatile float setpoint,volatile float medida, volatile float *er
 				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
 				HAL_GPIO_WritePin(GPIOA,GPIO_PIN_9,GPIO_PIN_RESET);
 			} else {
-				HAL_GPIIO_WritePin(GPIOA,GPIO_PIN_8,GPIO_PIN_RESET);
+				HAL_GPIO_WritePin(GPIOA,GPIO_PIN_8,GPIO_PIN_RESET);
 				HAL_GPIO_WritePin(GPIOA,GPIO_PIN_9,GPIO_PIN_SET);
 				*salida= -*salida;  //Hacer PWM positivo
 				if(*salida >1.0f) *salida=1.0f;
@@ -324,12 +327,43 @@ void FeedBackMotor(){
 	Change_DigVolt(&lectura1_adc, &lectura1_volt);
 	Change_DigVolt(&lectura2_adc, &lectura2_volt);
 
-	Control_PD(Posicion_deseada_motor_1,lectura1_volt,&error1,&derivada1,&salida1,&error_previo1,1);
-	Control_PD(Posicion_deseada_motor_2,lectura2_volt,&error2,&derivada2,&salida2,&error_previo2,2);
+	ControlPD(Posicion_deseada_motor_1,lectura1_volt,&error1,&derivada1,&salida1,&error_previo1,1);
+	ControlPD(Posicion_deseada_motor_2,lectura2_volt,&error2,&derivada2,&salida2,&error_previo2,2);
 }
 
+uint16_t angle_to_pwm(float angle_deg, float min_deg, float max_deg, uint16_t pwm_min, uint16_t pwm_max) {
+    if (angle_deg < min_deg) angle_deg = min_deg;
+    if (angle_deg > max_deg) angle_deg = max_deg;
+    return pwm_min + (uint16_t)((angle_deg - min_deg) * (pwm_max - pwm_min) / (max_deg - min_deg));
+}
 
+void EjecutarCinematica(Position posicion_deseada, float orientacion_deseada) {
+    // Calcula los ángulos deseados usando cinemática inversa
+    Angles a = inverse_kinematics(posicion_deseada, orientacion_deseada);
 
+    // --- θ1: motor paso a paso (base)
+        static float theta1_actual = 0.0f;
+        float delta_theta1 = a.theta1 - theta1_actual;
+        if (fabs(delta_theta1) > 1.0f) {
+            uint8_t dir = (delta_theta1 > 0) ? 1 : 0;
+            move_stepper_degrees(fabs(delta_theta1), dir);
+            theta1_actual = a.theta1;
+        }
+
+    // --- θ2: servo motor (hombro)
+    uint16_t pwm_theta2 = angle_to_pwm(a.theta2, 0, 180, 500, 2500);
+    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, pwm_theta2);
+
+    // --- θ3: motor DC (codo)
+    Posicion_deseada_motor_1 = (3.3f * a.theta3) / 240.0f;  // Ajusta si tu escala es distinta
+
+    // --- θ4: motor DC (efector)
+    Posicion_deseada_motor_2 = (3.3f * a.theta4) / 240.0f;
+
+    // Ejecuta control PD en ambos motores DC
+    FeedBackMotor();
+
+}
 
 /* USER CODE END 0 */
 
@@ -404,9 +438,7 @@ int main(void)
 
 	  }
 
-
-
-
+	  EjecutarCinematica(p, orientacion);
 
 //	  SetSpeed(&htim2, 1000);
 //
