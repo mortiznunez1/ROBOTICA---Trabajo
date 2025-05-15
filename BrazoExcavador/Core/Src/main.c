@@ -18,13 +18,13 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "Cinematica.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <string.h>
 #include <stdio.h>
 #include "i2c-lcd.h"
-#include "Cinematica.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -47,7 +47,6 @@
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
-ADC_HandleTypeDef hadc2;
 
 I2C_HandleTypeDef hi2c1;
 
@@ -73,7 +72,6 @@ static void MX_TIM3_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_TIM4_Init(void);
 static void MX_ADC1_Init(void);
-static void MX_ADC2_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -83,47 +81,32 @@ static void MX_ADC2_Init(void);
 
 
 
-uint32_t adc_val = 0;
-volatile uint8_t adc_ready = 0;
-uint32_t lectura1_buff[10];
-uint32_t lectura2_buff[10];
-uint32_t iter1=0;
-uint32_t iter2=0;
+volatile int32_t lectura1_adc;
+volatile int32_t lectura1_grados;
+volatile int32_t lectura1_volt;
+volatile int32_t lectura2_adc;
+volatile int32_t lectura2_grados;
+volatile int32_t lectura2_volt;
 
-uint32_t lectura1_adc;
-uint32_t var=0;
-uint32_t var1=0;
-int32_t lectura1_grados;
-float lectura1_volt;
-int32_t lectura2_adc;
-int32_t lectura2_grados;
-float lectura2_volt;
+volatile float error1;
+volatile float error_previo1;
+volatile float derivada1;
+volatile float salida1;
+volatile float error2;
+volatile float error_previo2;
+volatile float derivada2;
+volatile float salida2;
 
-//Motor 1
-float error1=0;
-float error_previo1=0;
-float derivada1=0;
-float integral1=0;
-float salida1=0;
-//Motor 2
-float error2;
-float error_previo2;
-float derivada2;
-float integral2;
-float salida2;
+volatile float dt=0.01;
 
-float dt=0.01;
-
-float Posicion_deseada_motor_1=1;
-float Posicion_deseada_motor_2=0;
+volatile float Posicion_deseada_motor_1;
+volatile float Posicion_deseada_motor_2;
 
 
-float Kp1=69.246;	//69.246
-float Ki1=0;
-float Kd1=0; 	 	//0.69
-float Kp2=69.246;
-float Ki2=0;
-float Kd2=0;
+volatile float Kp1=1;
+volatile float Kd1=0;
+volatile float Kp2=1;
+volatile float Kd2=0;
 
 char readBuf[BUFFERSIZE];  // Buffer para recibir la cadena completa
 volatile uint8_t flag = 0; // Indica cuándo se ha recibido una cadena completa
@@ -159,29 +142,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle) {
 		}
 	}
 }
-
-//uint32_t media(uint32_t *buff){
-//	uint32_t sum = 0;
-//	for (int i = 0; i < 10; i++) {sum += buff[i];}
-//	return sum / 10;
-//}
-
-//void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
-//    if (hadc->Instance == ADC1) {
-//    	lectura1_buff[iter1] = HAL_ADC_GetValue(&hadc1);
-//    	iter1++;
-//    	if (iter1==10)iter1=0;
-//    	lectura1_adc=media(lectura1_buff);
-//        adc_ready = 1;
-//    }
-//    if (hadc->Instance == ADC2) {
-//		lectura2_buff[iter2] = HAL_ADC_GetValue(&hadc2);
-//		iter2++;
-//		if (iter2==10)iter2=0;
-//		lectura2_adc=media(lectura2_buff);
-//		adc_ready = 1;
-//	}
-//}
 
 void step_once_non_blocking(void) {
     step_pulse_state = 1;
@@ -424,83 +384,78 @@ void BluetoothSetter(void){
 
 }
 
-//void ReadADC(ADC_HandleTypeDef *hadc, volatile uint32_t *variable){
-//
-//	HAL_ADC_Start(&hadc1);
-//	HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
-//	*variable=HAL_ADC_GetValue(&hadc1);
-//	HAL_ADC_Stop(&hadc1);
-//}
 
-//void Change_DigVolt(float adc_val){
-//	lectura1_volt=(3.3*adc_val)/4095.0;
-//}
-//
-//void Change_AngVolt(float adc_val){
-//	lectura1_volt=(3.3*adc_val)/240;
-//}
-//
-//void ControlPID(float setpoint, float medida, float *integral, float *error_previo, uint8_t Motor) {
-//
-//	float error, derivada, salida;
-//
-//	error=setpoint-medida;
-//	derivada=(error - *error_previo)/dt;
-//
-//	// Término integral con anti-windup
-//	*integral += error * dt;
-//	if (*integral > 1.0f) *integral = 1.0f;       // Saturación superior
-//	if (*integral < -1.0f) *integral = -1.0f;     // Saturación inferior
-//
-//	if (Motor==1){
-//		salida = Kp1 * (error + Ki1 * *integral + Kd1 * derivada);
-//
-//		if (salida > 0){
-//			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
-//			HAL_GPIO_WritePin(GPIOA,GPIO_PIN_9,GPIO_PIN_RESET);
-//		} else {
-//			HAL_GPIO_WritePin(GPIOA,GPIO_PIN_8,GPIO_PIN_RESET);
-//			HAL_GPIO_WritePin(GPIOA,GPIO_PIN_9,GPIO_PIN_SET);
-//			salida= -salida;  //Hacer PWM positivo
-//		}
-//		if(salida >69.0f) salida=69.0f;
-//		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, salida * 3.623);
-//		}
-//
-//	if (Motor==2){
-//		salida = Kp2 * (error + Ki2 * *integral + Kd2 * derivada);
-//
-//			if (salida > 0){
-//				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_SET);
-//				HAL_GPIO_WritePin(GPIOA,GPIO_PIN_13,GPIO_PIN_RESET);
-//			} else {
-//				HAL_GPIO_WritePin(GPIOA,GPIO_PIN_10,GPIO_PIN_RESET);
-//				HAL_GPIO_WritePin(GPIOA,GPIO_PIN_13,GPIO_PIN_SET);
-//				salida= -salida;  //Hacer PWM positivo
-//				if(salida >69.0f) salida=69.0f;
-//				__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, salida * 3.623);
-//			}}
-//	*error_previo= error;
-//
-//	}
+void ReadADC(ADC_HandleTypeDef *hadc, volatile uint32_t *variable){
+
+	HAL_ADC_Start(&hadc1);
+	HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+	*variable=HAL_ADC_GetValue(&hadc1);
+	HAL_ADC_Stop(&hadc1);
+}
+
+void Change_VoltGrados(uint32_t *adc_val){
+	lectura1_grados = (240.0f *(*adc_val))/4095.0f;
+}
+
+void Change_GradosVolt(uint32_t *Posicion){
+	lectura1_volt=(3.3f *(*Posicion))/240.0f;
+}
+
+void Change_DigVolt(volatile uint32_t *adc_val, volatile  uint32_t *lectura){
+	*lectura=(3.3f*(float)(*adc_val))/4095.0f;
+}
+
+void ControlPD(volatile float setpoint,volatile float medida, volatile float *error,
+		volatile float *derivada,volatile float *salida, volatile float *error_previo,uint8_t Motor){
+
+	*error=setpoint-medida;
+	*derivada=(*error- *error_previo)/dt;
+
+	if (Motor==1){
+
+		*salida =Kp1 * *error + Kd1 * *derivada;
+
+		if (*salida > 0){
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(GPIOA,GPIO_PIN_9,GPIO_PIN_RESET);
+		} else {
+			HAL_GPIO_WritePin(GPIOA,GPIO_PIN_8,GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOA,GPIO_PIN_9,GPIO_PIN_SET);
+			*salida= -*salida;  //Hacer PWM positivo
+			if(*salida >1.0f) *salida=1.0f;
+			__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, *salida *PWM_MAX);
+		}}
+
+	if (Motor==2){
+
+			*salida =Kp2 * *error + Kd2 * *derivada;
+
+			if (*salida > 0){
+				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
+				HAL_GPIO_WritePin(GPIOA,GPIO_PIN_9,GPIO_PIN_RESET);
+			} else {
+				HAL_GPIO_WritePin(GPIOA,GPIO_PIN_8,GPIO_PIN_RESET);
+				HAL_GPIO_WritePin(GPIOA,GPIO_PIN_9,GPIO_PIN_SET);
+				*salida= -*salida;  //Hacer PWM positivo
+				if(*salida >1.0f) *salida=1.0f;
+				__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, *salida *PWM_MAX);
+			}}
+	*error_previo= *error;
+
+	}
 
 
-//void FeedBackMotor(){
-//
-//
-//	//ReadADC(&hadc1,&lectura1_adc);
-//	//ReadADC(&hadc1,&lectura2_adc);
-//
-//	HAL_ADC_Start_IT(&hadc1);
-//	HAL_ADC_Start_IT(&hadc2);
-//
-//	Change_DigVolt(lectura1_adc);
-//	Change_DigVolt(lectura2_adc);
-//
-//	ControlPID(Posicion_deseada_motor_1,lectura1_volt,&integral1,&error_previo1,1);
-//	ControlPID(Posicion_deseada_motor_2,lectura2_volt,&integral2,&error_previo2,2);
-//
-//}
+void FeedBackMotor(){
+
+	ReadADC(&hadc1,&lectura1_adc);
+	ReadADC(&hadc1,&lectura2_adc);
+
+	Change_DigVolt(&lectura1_adc, &lectura1_volt);
+	Change_DigVolt(&lectura2_adc, &lectura2_volt);
+
+	ControlPD(Posicion_deseada_motor_1,lectura1_volt,&error1,&derivada1,&salida1,&error_previo1,1);
+	ControlPD(Posicion_deseada_motor_2,lectura2_volt,&error2,&derivada2,&salida2,&error_previo2,2);
+}
 
 uint16_t angle_to_pwm(float angle_deg, float min_deg, float max_deg, uint16_t pwm_min, uint16_t pwm_max) {
     if (angle_deg < min_deg) angle_deg = min_deg;
@@ -574,19 +529,10 @@ int main(void)
   MX_I2C1_Init();
   MX_TIM4_Init();
   MX_ADC1_Init();
-  MX_ADC2_Init();
   /* USER CODE BEGIN 2 */
   lcd_init();
   set_stepper();
-  HAL_TIM_OC_Start_IT(&htim4, TIM_CHANNEL_1);
-//  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-//  HAL_TIM_PWM_Start(&htim2,  TIM_CHANNEL_2);
-//  HAL_TIM_PWM_Start(&htim3,  TIM_CHANNEL_3);
-
-
-
-//  HAL_ADC_Start_IT(&hadc1);
-//  HAL_ADC_Start_IT(&hadc2);
+  HAL_TIM_OC_Start_IT(&htim2, TIM_CHANNEL_1);
 
   /* USER CODE END 2 */
 
@@ -602,9 +548,9 @@ int main(void)
     /* USER CODE BEGIN 3 */
 	  //	  ParameterRegister();
 
-//	  	  BluetoothSetter();
-//
-//	  	  BluetoothAction();
+	  	  BluetoothSetter();
+
+	  	  BluetoothAction();
 
 	  	  //EjecutarCinematica(p, orientacion);
 
@@ -626,21 +572,6 @@ int main(void)
 	  //
 	  //      HAL_Delay(2000);
 
-
-//		  if (adc_ready==1) {
-//		  	adc_ready = 0;
-//		    HAL_ADC_Start_IT(&hadc2);
-//		  	//var=8;
-//		  	Change_DigVolt(lectura1_adc);
-//		  	ControlPID(Posicion_deseada_motor_1,lectura1_volt,&integral1,&error_previo1,1);
-//		  	//Posicion_deseada_motor_1+=1;
-//		  }
-	//	  var=HAL_GetTick();
-	//	  if(var-var1==2000){
-	//		  var1=var;
-	//	  if(Posicion_deseada_motor_1<1) Posicion_deseada_motor_1+=1;
-	//	  else Posicion_deseada_motor_1+=0;
-	//	  }
 
 	  //	  move_stepper_degrees(270,1);
 	  //	  HAL_Delay(5000);
@@ -745,7 +676,7 @@ static void MX_ADC1_Init(void)
 
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
   */
-  sConfig.Channel = ADC_CHANNEL_1;
+  sConfig.Channel = ADC_CHANNEL_10;
   sConfig.Rank = 1;
   sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
@@ -755,58 +686,6 @@ static void MX_ADC1_Init(void)
   /* USER CODE BEGIN ADC1_Init 2 */
 
   /* USER CODE END ADC1_Init 2 */
-
-}
-
-/**
-  * @brief ADC2 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_ADC2_Init(void)
-{
-
-  /* USER CODE BEGIN ADC2_Init 0 */
-
-  /* USER CODE END ADC2_Init 0 */
-
-  ADC_ChannelConfTypeDef sConfig = {0};
-
-  /* USER CODE BEGIN ADC2_Init 1 */
-
-  /* USER CODE END ADC2_Init 1 */
-
-  /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
-  */
-  hadc2.Instance = ADC2;
-  hadc2.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
-  hadc2.Init.Resolution = ADC_RESOLUTION_12B;
-  hadc2.Init.ScanConvMode = DISABLE;
-  hadc2.Init.ContinuousConvMode = ENABLE;
-  hadc2.Init.DiscontinuousConvMode = DISABLE;
-  hadc2.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-  hadc2.Init.ExternalTrigConv = ADC_SOFTWARE_START;
-  hadc2.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc2.Init.NbrOfConversion = 1;
-  hadc2.Init.DMAContinuousRequests = DISABLE;
-  hadc2.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
-  if (HAL_ADC_Init(&hadc2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
-  */
-  sConfig.Channel = ADC_CHANNEL_2;
-  sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
-  if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN ADC2_Init 2 */
-
-  /* USER CODE END ADC2_Init 2 */
 
 }
 
@@ -864,7 +743,7 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 1 */
   htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 250-1;
+  htim1.Init.Prescaler = 160-1;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim1.Init.Period = 2000;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -928,9 +807,9 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 5-1;
+  htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 250-1;
+  htim2.Init.Period = 1000-1;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_PWM_Init(&htim2) != HAL_OK)
@@ -977,9 +856,9 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 5-1;
+  htim3.Init.Prescaler = 0;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 250-1;
+  htim3.Init.Period = 1000-1;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_PWM_Init(&htim3) != HAL_OK)
@@ -1108,21 +987,38 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(MS3_GPIO_Port, MS3_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3|GPIO_PIN_5, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2|MS3_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_8, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, MS2_Pin|MS1_Pin|ENABLE_N_Pin|DIR_Pin
                           |STEP_Pin|GPIO_PIN_15, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_13, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin : MS3_Pin */
-  GPIO_InitStruct.Pin = MS3_Pin;
+  /*Configure GPIO pins : PA3 PA5 */
+  GPIO_InitStruct.Pin = GPIO_PIN_3|GPIO_PIN_5;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(MS3_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PB2 MS3_Pin */
+  GPIO_InitStruct.Pin = GPIO_PIN_2|MS3_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PE8 */
+  GPIO_InitStruct.Pin = GPIO_PIN_8;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pins : MS2_Pin MS1_Pin ENABLE_N_Pin DIR_Pin
                            STEP_Pin PD15 */
@@ -1132,13 +1028,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : PA8 PA9 PA10 PA13 */
-  GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_13;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
   /* USER CODE END MX_GPIO_Init_2 */
