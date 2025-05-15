@@ -34,7 +34,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define BUFFERSIZE 4
+#define BUFFERSIZE 32
 #define ADCResolution 4096
 #define ServoRange 120
 #define PWM_MAX __HAL_TIM_GET_AUTORELOAD(&htim1)
@@ -114,24 +114,29 @@ volatile uint8_t flag = 0; // Indica cuándo se ha recibido una cadena completa
 //uint8_t step_index = 0;
 //uint8_t step_state = 0;
 volatile uint8_t step_pulse_state = 0; // 0 = inactivo, 1 = STEP HIGH esperando STEP LOW
-volatile float angle = 0;
-volatile float angle_buf = 0;
-volatile uint8_t angle_ready = 0;
+volatile float angle[4] = {};
+volatile float angle_buf[4] = {};
+volatile uint8_t angle_ready[4] = {};
 volatile uint8_t moving = 0;
 volatile float angle_difference = 0;
 
+volatile uint8_t bluetoothSetter = 0; // Iniciar la transmisión bluetooth
+volatile uint8_t x,y,z = 0;
+
+Position DesiredPosition = {};
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle) {
 
-	static uint8_t index = 0; // Posición en el buffer
+	static uint8_t index = 1; // Posición en el buffer
 	static char readChar;
 	if (UartHandle->Instance == USART6) {
 		HAL_UART_Receive_IT(&huart6, (uint8_t *)&readChar, 1); // Recibir próximo carácter
 
-		if (readChar == '%') { // Indicador de fin de mensaje
+		if (readChar == '%'||readChar == '\000') { // Indicador de fin de mensaje
 			readBuf[index] = '\0'; // Terminar el string
 			flag = 1;              // Indicar que el mensaje está listo
 			index = 0;             // Reiniciar el índice
+			HAL_UART_Receive_IT(&huart6, (uint8_t *)&readBuf, 1); // Iniciar recepción
 		} else if (index < BUFFERSIZE - 1) {
 			readBuf[index++] = readChar; // Guardar carácter en el buffer
 		}
@@ -203,61 +208,182 @@ void move_stepper_degrees(float angle, uint8_t dir) {
 }
 
 int strtoint(char readBuf[]) {
+
     int i = 0;
     int angle = 0;
 
-    // Iteración hasta encontrar el final de la cadena
-    while (readBuf[i] != '\0' || readBuf[i] != '\000') {  // Finaliza al llegar a '\0' o '\000'
+    if((readBuf[0]='!'||'$'||'&'||'/')){
+    	// Iteración hasta encontrar el final de la cadena
+    	    while (readBuf[i] != '\0' || readBuf[i] != '\000') {  // Finaliza al llegar a '\0' o '\000'
 
-		// Solo se procesan los caracteres numéricos
-			if (readBuf[i] >= '0' && readBuf[i] <= '9') {
-				angle = angle * 10 + (readBuf[i] - '0');
-			}
+    			// Solo se procesan los caracteres numéricos
+    				if (readBuf[i] >= '0' && readBuf[i] <= '9') {
+    					angle = angle * 10 + (readBuf[i] - '0');
+    				}
 
-        i++;  // Se avanza al siguiente carácter
+    	        i++;  // Se avanza al siguiente carácter
+    	    }
+
     }
 
     return angle;
 }
 
+void BufferCleaner(void){
 
-void BluetoothManager()
+	for(uint8_t j=0; j<BUFFERSIZE; j++) readBuf[j];
+}
+
+void PositionManager(void) {
+
+	uint8_t i = 0;
+	int temp = 0;	// Valor temporal de la posición enviada
+	char axis = 0;	// Eje a estudio
+
+	    while (i < BUFFERSIZE && readBuf[i] != '\0') {
+	        char c = readBuf[i];
+
+	        // Detectar letras de ejs coordenados
+	        if (c == 'X' || c == 'Y' || c == 'Z') {
+	            axis = c;
+	            temp = 0;
+	            i++; // avanzar al siguiente carácter
+
+	            // Acumular números mientras sean dígitos válidos
+	            while (i < BUFFERSIZE && readBuf[i] >= '0' && readBuf[i] <= '9') {
+	                temp = temp * 10 + (readBuf[i] - '0');
+	                i++;
+	            }
+
+	            // Almacenar en el eje correspondiente
+	            if (axis == 'X') x = temp;
+	            else if (axis == 'Y') y = temp;
+	            else if (axis == 'Z') z = temp;
+	        } else {
+	            i++;
+	        }
+	    }
+}
+
+
+void GeneralMoveMotor(uint8_t n)
 {
 	float angle_aux = 0;
 
-	if (flag) { // Si hay un mensaje recibido
+	if((angle_aux = strtoint(readBuf)) != angle[n]){
+		angle_buf[n] = angle[n];
+		angle[n] = angle_aux;
+		angle_ready[n] = 1;
+	}
+}
+
+void BluetoothAction(void){
+	if(flag){
 
 		flag = 0;
 
-		if(!moving)
-		{
-			if((angle_aux = strtoint(readBuf)) != angle){
-				angle_buf = angle;
-				angle = angle_aux;
-				angle_ready = 1;
-			}
-		}
+		switch(readBuf[0]){
+				case '!':
+					if(!moving){
 
-//		if(angle >= angle_buf)
-//		{
-//			move_stepper_degrees(angle, 1);
-//		}
-//		else
-//		{
-//			move_stepper_degrees(angle, 0);
-//		}
-//
-//			  if (strcmp(readBuf, "Alante") == 0) {
-//				  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
-//			  } else if (strcmp(readBuf, "Derecha") == 0) {
-//				  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
-//			  }
-//			  else if (strcmp(readBuf, "60") == 0) {
-//				  move_stepper_degrees(strtof(readBuf,NULL),1);
-//			  			  }
-//			  memset(readBuf, 0, sizeof(readBuf)); // Resetear el buffer una vez gestionada la flag
-	         }
+						GeneralMoveMotor(0);
+
+						if(angle_ready[0]){
+
+							  angle_ready[0] = 0;
+							  angle_difference = angle[0] - angle_buf[0];
+
+							  if(angle[0] >= angle_buf[0]) {
+									move_stepper_degrees(angle_difference, 1);
+								}
+
+							else {
+									move_stepper_degrees(-angle_difference, 0);
+								}
+					  }
+					}
+
+					break;
+				case '$':
+					if(!moving){
+
+						GeneralMoveMotor(1);
+
+						if(angle_ready[1]){
+
+							  angle_ready[1] = 0;
+							  angle_difference = angle[1] - angle_buf[1];
+
+							  if(angle[1] >= angle_buf[1]) {
+								  SetPosition(&htim1,angle[1]);
+							  }
+
+							else {
+								  SetPosition(&htim1,angle[1]);
+								}
+					  }
+					}
+						break;
+				case '&':
+					if(!moving){
+
+						GeneralMoveMotor(2);
+
+						if(angle_ready[2]){
+
+							  angle_ready[2] = 0;
+							  angle_difference = angle[2] - angle_buf[2];
+
+							  if(angle[2] >= angle_buf[2]) {
+								  //Poner la del motor
+							  }
+
+							else {
+								  //Poner la del motor
+								}
+					  }
+					}
+						break;
+				case '/':
+					if(!moving){
+
+						GeneralMoveMotor(3);
+
+						if(angle_ready[3]){
+
+							  angle_ready[3] = 0;
+							  angle_difference = angle[3] - angle_buf[3];
+
+							  if(angle[3] >= angle_buf[3]) {
+								  //Poner la del motor
+							  }
+
+							else {
+								  //Poner la del motor
+								}
+					  }
+					}
+						break;
+				case '?':
+					if(!moving){
+						//Angles inverse_kinematics(Position p, float desired_orientation) {
+						PositionManager();
+					}
+						break;
+			}
+
+		BufferCleaner();
+	}
+
 }
+
+void BluetoothSetter(void){
+
+	if(readBuf[24] =='t' && readBuf[25] == 'h' )
+		BufferCleaner();
+
+}
+
 
 void ReadADC(ADC_HandleTypeDef *hadc, volatile uint32_t *variable){
 
@@ -420,59 +546,48 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-//	  ParameterRegister();
+	  //	  ParameterRegister();
 
-	  BluetoothManager();
-	  if(angle_ready){
+	  	  BluetoothSetter();
 
-		  angle_ready = 0;
-		  angle_difference = angle-angle_buf;
+	  	  BluetoothAction();
 
-		  if(angle >= angle_buf) {
-		  		move_stepper_degrees(angle_difference, 1);
-			}
+	  	  //EjecutarCinematica(p, orientacion);
 
-		else {
-				move_stepper_degrees(angle_buf-angle, 0);
-			}
-
-	  }
-
-	  EjecutarCinematica(p, orientacion);
-
-//	  SetSpeed(&htim2, 1000);
-//
-//	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET);
-//	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
-//
-//	  HAL_Delay(2000);
-//	  SetSpeed(&htim2, 100);
-//
-//	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_RESET);
-//      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
-//
-//      HAL_Delay(2000);
-//
-//      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_RESET);
-//      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
-//
-//      HAL_Delay(2000);
+	  //	  SetSpeed(&htim2, 1000);
+	  //
+	  //	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET);
+	  //	  HAL_GPI223.0O_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
+	  //
+	  //	  HAL_Delay(2000);
+	  //	  SetSpeed(&htim2, 100);
+	  //
+	  //	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_RESET);
+	  //      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
+	  //
+	  //      HAL_Delay(2000);
+	  //
+	  //      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_RESET);
+	  //      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
+	  //
+	  //      HAL_Delay(2000);
 
 
-//	  move_stepper_degrees(270,1);
-//	  HAL_Delay(5000);
-//	  move_stepper_degrees(180,0);
-//	  HAL_Delay(5000);
+	  //	  move_stepper_degrees(270,1);
+	  //	  HAL_Delay(5000);
+	  //	  move_stepper_degrees(180,0);
+	  //	  HAL_Delay(5000);
 
-//	  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_RESET); // Dirección: 0 ó 1
-//	  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_10, GPIO_PIN_RESET); // ENABLE_N: LOW para activar
-//
-//	  for (int i = 0; i < 3200; i++) { // 3200 pasos = 1 vuelta (con 1/16 microstepping)
-//
-//	      step_once();
-//	  }
+	  //	  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_RESET); // Dirección: 0 ó 1
+	  //	  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_10, GPIO_PIN_RESET); // ENABLE_N: LOW para activar
+	  //
+	  //	  for (int i = 0; i < 3200; i++) { // 3200 pasos = 1 vuelta (con 1/16 microstepping)
+	  //
+	  //	      step_once();
+	  //	  }
 
-  }
+	    }
+
   /* USER CODE END 3 */
 }
 
