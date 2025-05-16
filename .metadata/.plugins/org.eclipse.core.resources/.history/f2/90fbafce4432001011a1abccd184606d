@@ -330,8 +330,6 @@ void PositionManager(void) {
 }
 
 
-
-
 void GeneralMoveMotor(uint8_t n)
 {
 	float angle_aux = 0;
